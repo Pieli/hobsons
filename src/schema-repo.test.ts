@@ -5,7 +5,7 @@ import { z } from "zod";
 // Since it's not exported, we'll test it through the Registry's repos
 import { Registry } from "./index.js";
 
-describe.skip("SchemaRepo (tested through Registry)", () => {
+describe("SchemaRepo (tested through Registry)", () => {
   let registry: Registry;
 
   beforeEach(() => {
@@ -52,6 +52,7 @@ describe.skip("SchemaRepo (tested through Registry)", () => {
       const schemas1 = registry.original.schemas;
       const schemas2 = registry.original.schemas;
 
+      // same, same, but different
       expect(schemas1).toEqual(schemas2);
       expect(schemas1).not.toBe(schemas2);
 
@@ -64,7 +65,7 @@ describe.skip("SchemaRepo (tested through Registry)", () => {
   describe("union getter", () => {
     it("should throw error with fewer than 2 schemas", () => {
       expect(() => registry.original.union).toThrow(
-        "Too few schemas provided... at least 2 needed",
+        "At least 2 schemas are required to construct a union",
       );
 
       const singleSchema = z.object({
@@ -74,7 +75,7 @@ describe.skip("SchemaRepo (tested through Registry)", () => {
       registry.register(singleSchema);
 
       expect(() => registry.original.union).toThrow(
-        "Too few schemas provided... at least 2 needed",
+        "At least 2 schemas are required to construct a union",
       );
     });
 
@@ -166,7 +167,7 @@ describe.skip("SchemaRepo (tested through Registry)", () => {
   describe("enum getter", () => {
     it("should throw error with fewer than 2 schemas", () => {
       expect(() => registry.original.enum).toThrow(
-        "An enum needs at least two schemas to be constructued",
+        "At least 2 schemas are required to construct an enum",
       );
     });
 

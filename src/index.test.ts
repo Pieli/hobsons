@@ -18,7 +18,7 @@ describe("Registry", () => {
     });
 
     it("should create registry with global blacklist", () => {
-      const blacklistFilter: SchemaFilter = (key, schema) =>
+      const blacklistFilter: SchemaFilter = (_, schema) =>
         schema.shape.id !== undefined;
       const reg = new Registry({ globalBlacklist: [blacklistFilter] });
       expect(reg).toBeDefined();

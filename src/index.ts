@@ -43,7 +43,10 @@ class SchemaRepo implements ModifiableRepo {
     return Object.values(this.#schemas);
   }
 
-  public get union() {
+  public get union(): z.ZodDiscriminatedUnion<
+    string,
+    [z.AnyZodObject, ...z.AnyZodObject[]]
+  > {
     return this.#_constructUnion(this.#schemas);
   }
 
