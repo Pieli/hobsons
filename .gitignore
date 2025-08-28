@@ -1,3 +1,6 @@
+# Misc
+*.nvim
+
 # Logs
 logs
 *.log
