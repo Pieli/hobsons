@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export type SchemaFilter = (schema: z.AnyZodObject) => boolean;
+export type SchemaFilter = (key: string, schema: z.AnyZodObject) => boolean;
 
 export interface RegistryOptions {
   readonly globalBlacklist?: SchemaFilter[];
@@ -134,12 +134,7 @@ function applyFilter(
   const filteredShape = Object.entries(
     withoutTypeField.shape as Record<string, z.AnyZodObject>,
   )
-    .filter(
-      ([key, zodObj]) =>
-        !blacklistedFields.some((f) =>
-          typeof f === "string" ? key === f : f(zodObj),
-        ),
-    )
+    .filter(([key, zodObj]) => !blacklistedFields.some((f) => f(key, zodObj)))
     .reduce(
       (acc, [key, value]) => {
         let processedValue = value as z.ZodTypeAny;
@@ -153,6 +148,7 @@ function applyFilter(
       {} as Record<string, z.ZodTypeAny>,
     );
 
+  // reintrodzuce the type field
   return z.object(filteredShape).merge(typeField);
 }
 

@@ -18,7 +18,7 @@ describe("Registry", () => {
     });
 
     it("should create registry with global blacklist", () => {
-      const blacklistFilter: SchemaFilter = (schema) =>
+      const blacklistFilter: SchemaFilter = (key, schema) =>
         schema.shape.id !== undefined;
       const reg = new Registry({ globalBlacklist: [blacklistFilter] });
       expect(reg).toBeDefined();
@@ -84,7 +84,7 @@ describe("Registry", () => {
       expect(registry.llm.factory("user")).toBeUndefined();
     });
 
-    it.only("should apply global blacklist filters (remove all)", () => {
+    it("should apply global blacklist filters (remove all)", () => {
       const blacklistFilter: SchemaFilter = () => true; // Remove all fields
       const regWithBlacklist = new Registry({
         globalBlacklist: [blacklistFilter],
@@ -96,16 +96,29 @@ describe("Registry", () => {
       expect(llmSchema).toBeDefined();
     });
 
-    it.only("should apply global blacklist filters (remove some)", () => {
-      const blacklistFilter: SchemaFilter = () => true; // Remove all fields
+    it("should apply global blacklist filters (remove some)", () => {
       const regWithBlacklist = new Registry({
-        globalBlacklist: [blacklistFilter],
+        globalBlacklist: [(key) => key === "name", (key) => key === "id"],
       });
 
       regWithBlacklist.register(userSchema);
 
       const llmSchema = regWithBlacklist.llm.factory("user");
       expect(llmSchema).toBeDefined();
+      expect(Object.keys(llmSchema!.shape)).not.toContain("name");
+      expect(Object.keys(llmSchema!.shape)).not.toContain("id");
+    });
+
+    it("global blacklist should not be able to remove type", () => {
+      const regWithBlacklist = new Registry({
+        globalBlacklist: [(key) => key === "type"],
+      });
+
+      regWithBlacklist.register(userSchema);
+
+      const llmSchema = regWithBlacklist.llm.factory("user");
+      expect(llmSchema).toBeDefined();
+      expect(Object.keys(llmSchema!.shape)).toContain("type");
     });
 
     it("should apply local blacklist filters", () => {
