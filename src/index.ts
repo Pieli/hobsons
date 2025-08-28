@@ -14,7 +14,7 @@ export interface Repo {
     [z.AnyZodObject, ...z.AnyZodObject[]]
   >;
 
-  factory(name: string): z.AnyZodObject | undefined;
+  factory(name: string): z.AnyZodObject | null;
 }
 
 interface Modifiable {
@@ -58,8 +58,12 @@ class SchemaRepo implements ModifiableRepo {
     return z.enum(keys as [string, ...string[]]);
   }
 
-  public factory(name: string): z.AnyZodObject | undefined {
-    return this.#schemas[name];
+  /**
+   * Gets the schema object with the type (defined by the literal)
+   * is equal to the argument name.
+   */
+  public factory(name: string): z.AnyZodObject | null {
+    return this.#schemas[name] ?? null;
   }
 
   add(schema: z.AnyZodObject): void {
@@ -91,6 +95,11 @@ export class Registry {
     return this._original;
   }
 
+  /**
+   * Registes a new schema. If an schema with the same type already exists
+   * the old value will be overriden with the new one.
+   *
+   */
   public register(
     schema: z.AnyZodObject,
     localBlacklist?: SchemaFilter[],

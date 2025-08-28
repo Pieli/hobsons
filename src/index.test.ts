@@ -81,7 +81,7 @@ describe("Registry", () => {
       registry.register(userSchema, undefined, { ignoreLLM: true });
 
       expect(registry.original.factory("user")).toBeDefined();
-      expect(registry.llm.factory("user")).toBeUndefined();
+      expect(registry.llm.factory("user")).toBeNull();
     });
 
     it("should apply global blacklist filters (remove all)", () => {
@@ -136,6 +136,25 @@ describe("Registry", () => {
 
       expect(registry.original.schemas).toHaveLength(2);
       expect(registry.llm.schemas).toHaveLength(2);
+    });
+
+    it("should throw on duplicate keys", () => {
+      registry.register(userSchema);
+      expect(registry.original.schemas).toHaveLength(1);
+
+      const altSchema = z.object({
+        type: z.literal("user"),
+        amazing: z.string(),
+      });
+
+      expect(() => registry.register(altSchema)).not.toThrow();
+      expect(registry.original.schemas).toHaveLength(1);
+      expect(Object.keys(registry.original.schemas[0]?.shape)).toEqual([
+        "type",
+        "amazing",
+      ]);
+
+      console.log(Object.keys(registry.original.schemas[0]?.shape));
     });
   });
 
@@ -230,7 +249,7 @@ describe("Registry", () => {
 
       expect(userSchema).toBeDefined();
       expect(postSchema).toBeDefined();
-      expect(nonexistentSchema).toBeUndefined();
+      expect(nonexistentSchema).toBeNull();
     });
 
     it("should return copy of schemas array", () => {

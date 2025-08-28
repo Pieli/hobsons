@@ -252,7 +252,7 @@ describe("SchemaRepo (tested through Registry)", () => {
 
     it("should return undefined for non-existent type", () => {
       const nonexistentSchema = registry.original.factory("nonexistent");
-      expect(nonexistentSchema).toBeUndefined();
+      expect(nonexistentSchema).toBeNull();
     });
 
     it("should return different schemas for different repos", () => {
