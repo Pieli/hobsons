@@ -48,7 +48,7 @@ describe("Registry", () => {
       authorId: z.string(),
     });
 
-    it.only("should register schema successfully", () => {
+    it("should register schema successfully", () => {
       expect(() => registry.register(userSchema)).not.toThrow();
 
       expect(registry.original.schemas).toHaveLength(1);
@@ -84,7 +84,19 @@ describe("Registry", () => {
       expect(registry.llm.factory("user")).toBeUndefined();
     });
 
-    it("should apply global blacklist filters", () => {
+    it.only("should apply global blacklist filters (remove all)", () => {
+      const blacklistFilter: SchemaFilter = () => true; // Remove all fields
+      const regWithBlacklist = new Registry({
+        globalBlacklist: [blacklistFilter],
+      });
+
+      regWithBlacklist.register(userSchema);
+
+      const llmSchema = regWithBlacklist.llm.factory("user");
+      expect(llmSchema).toBeDefined();
+    });
+
+    it.only("should apply global blacklist filters (remove some)", () => {
       const blacklistFilter: SchemaFilter = () => true; // Remove all fields
       const regWithBlacklist = new Registry({
         globalBlacklist: [blacklistFilter],

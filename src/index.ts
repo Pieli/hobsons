@@ -126,13 +126,18 @@ function applyFilter(
   schema: z.AnyZodObject,
   blacklistedFields: SchemaFilter[],
 ): z.AnyZodObject {
+  // remove the type value to protect it
+
+  const typeField = schema.pick({ type: true });
+  const withoutTypeField = schema.omit({ type: true });
+
   const filteredShape = Object.entries(
-    schema.shape as Record<string, z.AnyZodObject>,
+    withoutTypeField.shape as Record<string, z.AnyZodObject>,
   )
     .filter(
-      ([key, value]) =>
+      ([key, zodObj]) =>
         !blacklistedFields.some((f) =>
-          typeof f === "string" ? key === f : f(value),
+          typeof f === "string" ? key === f : f(zodObj),
         ),
     )
     .reduce(
@@ -148,7 +153,7 @@ function applyFilter(
       {} as Record<string, z.ZodTypeAny>,
     );
 
-  return z.object(filteredShape);
+  return z.object(filteredShape).merge(typeField);
 }
 
 // TODO expand to only include supported types
