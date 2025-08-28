@@ -24,48 +24,47 @@ interface Modifiable {
 type ModifiableRepo = Repo & Modifiable;
 
 class SchemaRepo implements ModifiableRepo {
-  private _schemas: Record<string, z.AnyZodObject> = {};
-
-  constructor() {}
+  #schemas: Record<string | number | symbol, z.AnyZodObject> = {};
 
   private _constructUnion(
     schema: Record<string, z.AnyZodObject>,
   ): z.ZodDiscriminatedUnion<string, [z.AnyZodObject, ...z.AnyZodObject[]]> {
-    const schemas: z.AnyZodObject[] = Object.values(schema);
-
+    const schemas = Object.values(schema);
     if (schemas.length < 2) {
-      throw Error("Too few schemas provided... at least 2 needed");
+      throw new Error("At least 2 schemas are required to construct a union");
     }
     return z.discriminatedUnion(
       "type",
-      schemas as [z.AnyZodObject, z.AnyZodObject, ...z.AnyZodObject[]],
+      schemas as [z.AnyZodObject, ...z.AnyZodObject[]],
     );
   }
 
   public get schemas(): z.AnyZodObject[] {
-    return Object.values(this._schemas).slice();
+    return Object.values(this.#schemas);
   }
 
-  public get union(): z.ZodDiscriminatedUnion<
-    string,
-    [z.AnyZodObject, ...z.AnyZodObject[]]
-  > {
-    return this._constructUnion(this._schemas);
+  public get union() {
+    return this._constructUnion(this.#schemas);
   }
 
   public get enum(): z.ZodEnum<[string, ...string[]]> {
-    if (Object.keys.length < 2) {
-      throw Error("An enum needs at least two schemas to be constructued");
+    const keys = Object.keys(this.#schemas);
+    if (keys.length < 2) {
+      throw new Error("At least 2 schemas are required to construct an enum");
     }
-    return z.enum(Object.keys(this._schemas) as [string, ...string[]]);
+    return z.enum(keys as [string, ...string[]]);
   }
 
   public factory(name: string): z.AnyZodObject | undefined {
-    return this._schemas[name];
+    return this.#schemas[name];
   }
 
   add(schema: z.AnyZodObject): void {
-    this._schemas[schema.shape.type] = schema;
+    const typeField = schema.shape.type as z.ZodLiteral<any>;
+    if (!typeField || !typeField._def || typeField._def.value === undefined) {
+      throw new Error("Schema must have a type field with a value");
+    }
+    this.#schemas[typeField._def.value] = schema;
   }
 }
 
@@ -97,7 +96,11 @@ export class Registry {
     },
   ): void {
     // check if literal is present
-    if (!schema.shape.type && !(schema.shape.type._def !== "ZodLiteral")) {
+    if (
+      !schema.shape.type ||
+      !(schema.shape.type._def.typeName === "ZodLiteral") ||
+      !schema.shape.type._def.value
+    ) {
       throw Error(
         "Precodition Failed: Schema is missing the type: zod.literal('...').",
       );
@@ -126,10 +129,11 @@ function applyFilter(
   const filteredShape = Object.entries(
     schema.shape as Record<string, z.AnyZodObject>,
   )
-    .filter(([key, value]) =>
-      blacklistedFields.some((f) =>
-        typeof f === "string" ? key === f : f(value),
-      ),
+    .filter(
+      ([key, value]) =>
+        !blacklistedFields.some((f) =>
+          typeof f === "string" ? key === f : f(value),
+        ),
     )
     .reduce(
       (acc, [key, value]) => {

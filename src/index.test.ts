@@ -25,7 +25,7 @@ describe("Registry", () => {
     });
   });
 
-  describe.only("register", () => {
+  describe("register", () => {
     const userSchema = z.object({
       type: z.literal("user"),
       id: z.string(),
@@ -48,11 +48,15 @@ describe("Registry", () => {
       authorId: z.string(),
     });
 
-    it("should register schema successfully", () => {
+    it.only("should register schema successfully", () => {
       expect(() => registry.register(userSchema)).not.toThrow();
 
-      expect(registry.original.schemas.length).toEqual(1);
-      expect(registry.llm.schemas.length).toEqual(1);
+      expect(registry.original.schemas).toHaveLength(1);
+      expect(registry.llm.schemas).toHaveLength(1);
+
+      expect(() => registry.register(postSchema)).not.toThrow();
+      expect(registry.original.schemas).toHaveLength(2);
+      expect(registry.llm.schemas).toHaveLength(2);
     });
 
     it("should throw error when schema missing type literal", () => {
