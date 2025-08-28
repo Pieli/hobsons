@@ -26,7 +26,7 @@ type ModifiableRepo = Repo & Modifiable;
 class SchemaRepo implements ModifiableRepo {
   #schemas: Record<string | number | symbol, z.AnyZodObject> = {};
 
-  private _constructUnion(
+  #_constructUnion(
     schema: Record<string, z.AnyZodObject>,
   ): z.ZodDiscriminatedUnion<string, [z.AnyZodObject, ...z.AnyZodObject[]]> {
     const schemas = Object.values(schema);
@@ -44,7 +44,7 @@ class SchemaRepo implements ModifiableRepo {
   }
 
   public get union() {
-    return this._constructUnion(this.#schemas);
+    return this.#_constructUnion(this.#schemas);
   }
 
   public get enum(): z.ZodEnum<[string, ...string[]]> {

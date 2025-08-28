@@ -254,14 +254,14 @@ describe("Registry", () => {
       // Clear one schema to test the error
       const emptyRegistry = new Registry();
       expect(() => emptyRegistry.original.union).toThrow(
-        "Too few schemas provided... at least 2 needed",
+        "At least 2 schemas are required to construct a union",
       );
     });
 
     it("should throw error when trying to create enum with fewer than 2 schemas", () => {
       const emptyRegistry = new Registry();
       expect(() => emptyRegistry.original.enum).toThrow(
-        "An enum needs at least two schemas to be constructued",
+        "At least 2 schemas are required to construct an enum",
       );
     });
   });
