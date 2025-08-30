@@ -168,8 +168,6 @@ function applyFilter(
 // TODO remove function
 // TODO registerMany
 
-// TODO object matching ( there exists already an object)
-
 /**
  * Remove defaults and optionals from a Zod type
  */

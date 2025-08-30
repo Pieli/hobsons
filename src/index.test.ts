@@ -153,8 +153,6 @@ describe("Registry", () => {
         "type",
         "amazing",
       ]);
-
-      console.log(Object.keys(registry.original.schemas[0]?.shape));
     });
   });
 

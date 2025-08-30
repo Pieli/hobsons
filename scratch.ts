@@ -33,6 +33,10 @@ registry.register(UserSchema);
 registry.register(ProductSchema);
 registry.register(OrderSchema);
 
+// console.log(registry.llm.union);
+console.log(registry.llm.enum);
+console.log(registry.llm.union.optionsMap);
+
 // Test the registry
 console.log("Regular schemas:", registry.original.schemas.length);
 console.log("LLM schemas:", registry.llm.schemas.length);
