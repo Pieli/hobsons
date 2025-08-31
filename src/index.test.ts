@@ -259,6 +259,76 @@ describe("Registry", () => {
     });
   });
 
+  describe("unregister", () => {
+    const userSchema = z.object({
+      type: z.literal("user"),
+      id: z.string(),
+      name: z.string(),
+    });
+
+    const postSchema = z.object({
+      type: z.literal("post"),
+      id: z.string(),
+      title: z.string(),
+    });
+
+    it("should unregister existing schema and return it", () => {
+      registry.register(userSchema);
+      registry.register(postSchema);
+
+      expect(registry.original.schemas).toHaveLength(2);
+      expect(registry.llm.schemas).toHaveLength(2);
+
+      const removed = registry.unregister("user");
+      
+      expect(removed).toBeDefined();
+      expect(removed?.shape.type._def.value).toBe("user");
+      expect(registry.original.schemas).toHaveLength(1);
+      expect(registry.llm.schemas).toHaveLength(1);
+      expect(registry.original.factory("user")).toBeNull();
+      expect(registry.llm.factory("user")).toBeNull();
+    });
+
+    it("should return null when unregistering non-existent schema", () => {
+      registry.register(userSchema);
+
+      const removed = registry.unregister("nonexistent");
+      
+      expect(removed).toBeNull();
+      expect(registry.original.schemas).toHaveLength(1);
+      expect(registry.llm.schemas).toHaveLength(1);
+    });
+
+    it("should remove from both original and llm repositories", () => {
+      registry.register(userSchema);
+      
+      expect(registry.original.factory("user")).toBeDefined();
+      expect(registry.llm.factory("user")).toBeDefined();
+
+      registry.unregister("user");
+
+      expect(registry.original.factory("user")).toBeNull();
+      expect(registry.llm.factory("user")).toBeNull();
+    });
+
+    it("should handle empty registry unregister gracefully", () => {
+      const removed = registry.unregister("anything");
+      expect(removed).toBeNull();
+    });
+
+    it("should maintain other schemas when unregistering one", () => {
+      registry.register(userSchema);
+      registry.register(postSchema);
+
+      registry.unregister("user");
+
+      expect(registry.original.factory("post")).toBeDefined();
+      expect(registry.llm.factory("post")).toBeDefined();
+      expect(registry.original.schemas).toHaveLength(1);
+      expect(registry.llm.schemas).toHaveLength(1);
+    });
+  });
+
   describe("error handling", () => {
     it("should throw error when trying to create union with fewer than 2 schemas", () => {
       const singleSchema = z.object({

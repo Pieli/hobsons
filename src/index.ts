@@ -19,6 +19,7 @@ export interface Repo {
 
 interface Modifiable {
   add(schema: z.AnyZodObject): void;
+  remove(name: string): z.AnyZodObject | null;
 }
 
 type ModifiableRepo = Repo & Modifiable;
@@ -73,6 +74,12 @@ class SchemaRepo implements ModifiableRepo {
     }
     this.#schemas[typeField._def.value] = schema;
   }
+
+  remove(name: string): z.AnyZodObject | null {
+    const deleted = this.#schemas[name];
+    delete this.#schemas[name];
+    return deleted ?? null;
+  }
 }
 
 export class Registry {
@@ -93,6 +100,10 @@ export class Registry {
 
   public get original(): Repo {
     return this._original;
+  }
+
+  public get globalBlacklist(): SchemaFilter[] {
+    return this._globalBlacklist;
   }
 
   /**
@@ -128,6 +139,11 @@ export class Registry {
         ]),
       );
     }
+  }
+
+  public unregister(name: string): z.AnyZodObject | null {
+    this._llm.remove(name);
+    return this._original.remove(name);
   }
 }
 
