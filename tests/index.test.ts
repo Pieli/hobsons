@@ -1,0 +1,355 @@
+import { describe, it, expect, beforeEach } from "vitest";
+import { z } from "zod";
+import { createRegistry, type SchemaFilter, type RegistryType } from "../src/index.js";
+
+describe("Registry", () => {
+  let registry: RegistryType;
+
+  beforeEach(() => {
+    registry = createRegistry();
+  });
+
+  describe("constructor", () => {
+    it("should create registry without options", () => {
+      const reg = createRegistry();
+      expect(reg).toBeDefined();
+      expect(reg.llm).toBeDefined();
+      expect(reg.original).toBeDefined();
+    });
+
+    it("should create registry with global blacklist", () => {
+      const blacklistFilter: SchemaFilter = (_, schema) =>
+        schema.shape.id !== undefined;
+      const reg = createRegistry({ globalBlacklist: [blacklistFilter] });
+      expect(reg).toBeDefined();
+    });
+  });
+
+  describe("register", () => {
+    const userSchema = z.object({
+      type: z.literal("user"),
+      id: z.string(),
+      name: z.string(),
+      email: z.string().email(),
+      age: z.number().optional(),
+      settings: z
+        .object({
+          theme: z.string().default("light"),
+          notifications: z.boolean().default(true),
+        })
+        .optional(),
+    });
+
+    const postSchema = z.object({
+      type: z.literal("post"),
+      id: z.string(),
+      title: z.string(),
+      content: z.string(),
+      authorId: z.string(),
+    });
+
+    it("should register schema successfully", () => {
+      expect(() => registry.register(userSchema)).not.toThrow();
+
+      expect(registry.original.schemas).toHaveLength(1);
+      expect(registry.llm.schemas).toHaveLength(1);
+
+      expect(() => registry.register(postSchema)).not.toThrow();
+      expect(registry.original.schemas).toHaveLength(2);
+      expect(registry.llm.schemas).toHaveLength(2);
+    });
+
+    it("should throw error when schema missing type literal", () => {
+      const invalidSchema = z.object({
+        id: z.string(),
+        name: z.string(),
+      });
+
+      expect(() => registry.register(invalidSchema)).toThrow(
+        "Precodition Failed: Schema is missing the type: zod.literal('...').",
+      );
+    });
+
+    it("should register schema to both original and llm repos by default", () => {
+      registry.register(userSchema);
+
+      expect(registry.original.factory("user")).toBeDefined();
+      expect(registry.llm.factory("user")).toBeDefined();
+    });
+
+    it("should skip llm registration when ignoreLLM is true", () => {
+      registry.register(userSchema, undefined, { ignoreLLM: true });
+
+      expect(registry.original.factory("user")).toBeDefined();
+      expect(registry.llm.factory("user")).toBeNull();
+    });
+
+    it("should apply global blacklist filters (remove all)", () => {
+      const blacklistFilter: SchemaFilter = () => true; // Remove all fields
+      const regWithBlacklist = createRegistry({
+        globalBlacklist: [blacklistFilter],
+      });
+
+      regWithBlacklist.register(userSchema);
+
+      const llmSchema = regWithBlacklist.llm.factory("user");
+      expect(llmSchema).toBeDefined();
+    });
+
+    it("should apply global blacklist filters (remove some)", () => {
+      const regWithBlacklist = createRegistry({
+        globalBlacklist: [(key) => key === "name", (key) => key === "id"],
+      });
+
+      regWithBlacklist.register(userSchema);
+
+      const llmSchema = regWithBlacklist.llm.factory("user");
+      expect(llmSchema).toBeDefined();
+      expect(Object.keys(llmSchema!.shape)).not.toContain("name");
+      expect(Object.keys(llmSchema!.shape)).not.toContain("id");
+    });
+
+    it("global blacklist should not be able to remove type", () => {
+      const regWithBlacklist = createRegistry({
+        globalBlacklist: [(key) => key === "type"],
+      });
+
+      regWithBlacklist.register(userSchema);
+
+      const llmSchema = regWithBlacklist.llm.factory("user");
+      expect(llmSchema).toBeDefined();
+      expect(Object.keys(llmSchema!.shape)).toContain("type");
+    });
+
+    it("should apply local blacklist filters", () => {
+      const localFilter: SchemaFilter = () => true;
+
+      registry.register(userSchema, [localFilter]);
+
+      const llmSchema = registry.llm.factory("user");
+      expect(llmSchema).toBeDefined();
+    });
+
+    it("should handle multiple schema registrations", () => {
+      registry.register(userSchema);
+      registry.register(postSchema);
+
+      expect(registry.original.schemas).toHaveLength(2);
+      expect(registry.llm.schemas).toHaveLength(2);
+    });
+
+    it("should throw on duplicate keys", () => {
+      registry.register(userSchema);
+      expect(registry.original.schemas).toHaveLength(1);
+
+      const altSchema = z.object({
+        type: z.literal("user"),
+        amazing: z.string(),
+      });
+
+      expect(() => registry.register(altSchema)).not.toThrow();
+      expect(registry.original.schemas).toHaveLength(1);
+      expect(Object.keys(registry.original.schemas[0]?.shape)).toEqual([
+        "type",
+        "amazing",
+      ]);
+    });
+  });
+
+  describe("repository access", () => {
+    beforeEach(() => {
+      const userSchema = z.object({
+        type: z.literal("user"),
+        id: z.string(),
+        name: z.string(),
+      });
+
+      const postSchema = z.object({
+        type: z.literal("post"),
+        id: z.string(),
+        title: z.string(),
+      });
+
+      registry.register(userSchema);
+      registry.register(postSchema);
+    });
+
+    it("should provide access to original repository", () => {
+      const originalRepo = registry.original;
+      expect(originalRepo.schemas).toHaveLength(2);
+    });
+
+    it("should provide access to llm repository", () => {
+      const llmRepo = registry.llm;
+      expect(llmRepo.schemas).toHaveLength(2);
+    });
+  });
+
+  describe("SchemaRepo functionality through Registry", () => {
+    beforeEach(() => {
+      const userSchema = z.object({
+        type: z.literal("user"),
+        id: z.string(),
+        name: z.string(),
+      });
+
+      const postSchema = z.object({
+        type: z.literal("post"),
+        id: z.string(),
+        title: z.string(),
+      });
+
+      registry.register(userSchema);
+      registry.register(postSchema);
+    });
+
+    it("should create discriminated union", () => {
+      const union = registry.original.union;
+      expect(union).toBeDefined();
+
+      // Test that union can parse valid objects
+      expect(() =>
+        union.parse({
+          type: "user",
+          id: "1",
+          name: "John",
+        }),
+      ).not.toThrow();
+
+      expect(() =>
+        union.parse({
+          type: "post",
+          id: "1",
+          title: "Test Post",
+        }),
+      ).not.toThrow();
+
+      // Test that union rejects invalid discriminator
+      expect(() =>
+        union.parse({
+          type: "invalid",
+          id: "1",
+        }),
+      ).toThrow();
+    });
+
+    it("should create enum from schema types", () => {
+      const enumSchema = registry.original.enum;
+      expect(enumSchema).toBeDefined();
+
+      expect(enumSchema.options).toEqual(["user", "post"]);
+    });
+
+    it("should provide factory method", () => {
+      const userSchema = registry.original.factory("user");
+      const postSchema = registry.original.factory("post");
+      const nonexistentSchema = registry.original.factory("nonexistent");
+
+      expect(userSchema).toBeDefined();
+      expect(postSchema).toBeDefined();
+      expect(nonexistentSchema).toBeNull();
+    });
+
+    it("should return copy of schemas array", () => {
+      const schemas1 = registry.original.schemas;
+      const schemas2 = registry.original.schemas;
+
+      expect(schemas1).toEqual(schemas2);
+      expect(schemas1).not.toBe(schemas2); // Different references
+    });
+  });
+
+  describe("unregister", () => {
+    const userSchema = z.object({
+      type: z.literal("user"),
+      id: z.string(),
+      name: z.string(),
+    });
+
+    const postSchema = z.object({
+      type: z.literal("post"),
+      id: z.string(),
+      title: z.string(),
+    });
+
+    it("should unregister existing schema and return it", () => {
+      registry.register(userSchema);
+      registry.register(postSchema);
+
+      expect(registry.original.schemas).toHaveLength(2);
+      expect(registry.llm.schemas).toHaveLength(2);
+
+      const removed = registry.unregister("user");
+      
+      expect(removed).toBeDefined();
+      expect(removed?.shape.type._def.value).toBe("user");
+      expect(registry.original.schemas).toHaveLength(1);
+      expect(registry.llm.schemas).toHaveLength(1);
+      expect(registry.original.factory("user")).toBeNull();
+      expect(registry.llm.factory("user")).toBeNull();
+    });
+
+    it("should return null when unregistering non-existent schema", () => {
+      registry.register(userSchema);
+
+      const removed = registry.unregister("nonexistent");
+      
+      expect(removed).toBeNull();
+      expect(registry.original.schemas).toHaveLength(1);
+      expect(registry.llm.schemas).toHaveLength(1);
+    });
+
+    it("should remove from both original and llm repositories", () => {
+      registry.register(userSchema);
+      
+      expect(registry.original.factory("user")).toBeDefined();
+      expect(registry.llm.factory("user")).toBeDefined();
+
+      registry.unregister("user");
+
+      expect(registry.original.factory("user")).toBeNull();
+      expect(registry.llm.factory("user")).toBeNull();
+    });
+
+    it("should handle empty registry unregister gracefully", () => {
+      const removed = registry.unregister("anything");
+      expect(removed).toBeNull();
+    });
+
+    it("should maintain other schemas when unregistering one", () => {
+      registry.register(userSchema);
+      registry.register(postSchema);
+
+      registry.unregister("user");
+
+      expect(registry.original.factory("post")).toBeDefined();
+      expect(registry.llm.factory("post")).toBeDefined();
+      expect(registry.original.schemas).toHaveLength(1);
+      expect(registry.llm.schemas).toHaveLength(1);
+    });
+  });
+
+  describe("error handling", () => {
+    it("should throw error when trying to create union with fewer than 2 schemas", () => {
+      const singleSchema = z.object({
+        type: z.literal("single"),
+        id: z.string(),
+      });
+
+      registry.register(singleSchema);
+
+      // Clear one schema to test the error
+      const emptyRegistry = createRegistry();
+      expect(() => emptyRegistry.original.union).toThrow(
+        "At least 2 schemas are required to construct a union",
+      );
+    });
+
+    it("should throw error when trying to create enum with fewer than 2 schemas", () => {
+      const emptyRegistry = createRegistry();
+      expect(() => emptyRegistry.original.enum).toThrow(
+        "At least 2 schemas are required to construct an enum",
+      );
+    });
+  });
+});
