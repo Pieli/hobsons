@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { z } from "zod";
-import { Registry, type SchemaFilter } from "./index.js";
+import { createRegistry, type SchemaFilter } from "./index.js";
 
 // Since utility functions are not exported, we test them through Registry functionality
 describe("Utility Functions (tested through Registry behavior)", () => {
@@ -10,7 +10,7 @@ describe("Utility Functions (tested through Registry behavior)", () => {
         return schema.shape?.email !== undefined;
       };
 
-      const registry = new Registry({ globalBlacklist: [blacklistFilter] });
+      const registry = createRegistry({ globalBlacklist: [blacklistFilter] });
 
       const userSchema = z.object({
         type: z.literal("user"),
@@ -39,7 +39,7 @@ describe("Utility Functions (tested through Registry behavior)", () => {
       const ageFilter: SchemaFilter = (_, schema) =>
         schema.shape?.age !== undefined;
 
-      const registry = new Registry({
+      const registry = createRegistry({
         globalBlacklist: [emailFilter, ageFilter],
       });
 
@@ -60,7 +60,7 @@ describe("Utility Functions (tested through Registry behavior)", () => {
     it("should combine global and local blacklist filters", () => {
       const globalFilter: SchemaFilter = (_, schema) =>
         schema.shape?.email !== undefined;
-      const registry = new Registry({ globalBlacklist: [globalFilter] });
+      const registry = createRegistry({ globalBlacklist: [globalFilter] });
 
       const localFilter: SchemaFilter = (_, schema) =>
         schema.shape?.age !== undefined;
@@ -83,7 +83,7 @@ describe("Utility Functions (tested through Registry behavior)", () => {
 
   describe("removeDefaultsAndOptionals function", () => {
     it("should remove optional fields from schema", () => {
-      const registry = new Registry();
+      const registry = createRegistry();
 
       const userSchema = z.object({
         type: z.literal("user"),
@@ -121,7 +121,7 @@ describe("Utility Functions (tested through Registry behavior)", () => {
     });
 
     it("should remove default values from schema", () => {
-      const registry = new Registry();
+      const registry = createRegistry();
 
       const userSchema = z.object({
         type: z.literal("user"),
@@ -151,7 +151,7 @@ describe("Utility Functions (tested through Registry behavior)", () => {
     });
 
     it("should handle nested defaults and optionals", () => {
-      const registry = new Registry();
+      const registry = createRegistry();
 
       const userSchema = z.object({
         type: z.literal("user"),
@@ -176,7 +176,7 @@ describe("Utility Functions (tested through Registry behavior)", () => {
     });
 
     it("should handle chained optionals and defaults", () => {
-      const registry = new Registry();
+      const registry = createRegistry();
 
       const userSchema = z.object({
         type: z.literal("user"),
@@ -212,7 +212,7 @@ describe("Utility Functions (tested through Registry behavior)", () => {
         return schema.shape?.id !== undefined;
       };
 
-      const registry = new Registry({ globalBlacklist: [functionFilter] });
+      const registry = createRegistry({ globalBlacklist: [functionFilter] });
 
       const userSchema = z.object({
         type: z.literal("user"),
@@ -224,7 +224,7 @@ describe("Utility Functions (tested through Registry behavior)", () => {
     });
 
     it("should handle empty blacklist arrays", () => {
-      const registry = new Registry({ globalBlacklist: [] });
+      const registry = createRegistry({ globalBlacklist: [] });
 
       const userSchema = z.object({
         type: z.literal("user"),

@@ -1,17 +1,17 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { z } from "zod";
-import { Registry, type SchemaFilter } from "./index.js";
+import { createRegistry, type SchemaFilter, type RegistryType } from "./index.js";
 
 describe("Registry", () => {
-  let registry: Registry;
+  let registry: RegistryType;
 
   beforeEach(() => {
-    registry = new Registry();
+    registry = createRegistry();
   });
 
   describe("constructor", () => {
     it("should create registry without options", () => {
-      const reg = new Registry();
+      const reg = createRegistry();
       expect(reg).toBeDefined();
       expect(reg.llm).toBeDefined();
       expect(reg.original).toBeDefined();
@@ -20,7 +20,7 @@ describe("Registry", () => {
     it("should create registry with global blacklist", () => {
       const blacklistFilter: SchemaFilter = (_, schema) =>
         schema.shape.id !== undefined;
-      const reg = new Registry({ globalBlacklist: [blacklistFilter] });
+      const reg = createRegistry({ globalBlacklist: [blacklistFilter] });
       expect(reg).toBeDefined();
     });
   });
@@ -86,7 +86,7 @@ describe("Registry", () => {
 
     it("should apply global blacklist filters (remove all)", () => {
       const blacklistFilter: SchemaFilter = () => true; // Remove all fields
-      const regWithBlacklist = new Registry({
+      const regWithBlacklist = createRegistry({
         globalBlacklist: [blacklistFilter],
       });
 
@@ -97,7 +97,7 @@ describe("Registry", () => {
     });
 
     it("should apply global blacklist filters (remove some)", () => {
-      const regWithBlacklist = new Registry({
+      const regWithBlacklist = createRegistry({
         globalBlacklist: [(key) => key === "name", (key) => key === "id"],
       });
 
@@ -110,7 +110,7 @@ describe("Registry", () => {
     });
 
     it("global blacklist should not be able to remove type", () => {
-      const regWithBlacklist = new Registry({
+      const regWithBlacklist = createRegistry({
         globalBlacklist: [(key) => key === "type"],
       });
 
@@ -339,14 +339,14 @@ describe("Registry", () => {
       registry.register(singleSchema);
 
       // Clear one schema to test the error
-      const emptyRegistry = new Registry();
+      const emptyRegistry = createRegistry();
       expect(() => emptyRegistry.original.union).toThrow(
         "At least 2 schemas are required to construct a union",
       );
     });
 
     it("should throw error when trying to create enum with fewer than 2 schemas", () => {
-      const emptyRegistry = new Registry();
+      const emptyRegistry = createRegistry();
       expect(() => emptyRegistry.original.enum).toThrow(
         "At least 2 schemas are required to construct an enum",
       );

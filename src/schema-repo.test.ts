@@ -3,13 +3,13 @@ import { z } from "zod";
 
 // We need to access the private SchemaRepo class for testing
 // Since it's not exported, we'll test it through the Registry's repos
-import { Registry } from "./index.js";
+import { createRegistry, type RegistryType } from "./index.js";
 
 describe("SchemaRepo (tested through Registry)", () => {
-  let registry: Registry;
+  let registry: RegistryType;
 
   beforeEach(() => {
-    registry = new Registry();
+    registry = createRegistry();
   });
 
   describe("schemas getter", () => {
